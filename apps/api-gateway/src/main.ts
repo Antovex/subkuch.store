@@ -5,6 +5,9 @@
 
 import express from 'express';
 import * as path from 'path';
+import cors from 'cors';
+import proxy from 'express-http-proxy';
+import morgan from 'morgan';
 
 const app = express();
 
