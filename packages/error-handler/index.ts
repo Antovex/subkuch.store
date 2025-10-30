@@ -58,3 +58,18 @@ export class RateLimitError extends AppError {
     super(message, 429);
   }
 }
+
+// External service error
+export class ExternalServiceError extends AppError {
+  constructor(message = "External service error") {
+    super(message, 502);
+  }
+}
+
+// Timeout error
+export class TimeoutError extends AppError {
+  constructor(message = "Request timed out") {
+    super(message, 504);
+  }
+}
+
