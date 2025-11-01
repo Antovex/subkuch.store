@@ -1,82 +1,348 @@
-# SubkuchStore
+﻿# SubkuchStore
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+E-commerce microservices platform built with Nx monorepo architecture.
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is almost ready ✨.
+## Overview
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/nx-api/node?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+Nx-powered Node.js/TypeScript monorepo containing:
 
-## Finish your CI setup
+- **API Gateway** — Rate-limited reverse proxy with CORS and request logging
+- **Auth Service** — OTP-based authentication with MongoDB and Redis
+- **E2E Tests** — Automated testing suite for auth flows
+- **Shared Packages** — Reusable error handling, database clients
 
-[Click here to finish setting up your workspace!](https://cloud.nx.app/connect/45V4ftWXDm)
+## Quick Start
 
+### Prerequisites
 
-## Run tasks
+- Node.js 20+
+- npm 8+
+- MongoDB (local or Atlas connection string)
+- Redis server (optional for OTP features)
 
-To run the dev server for your app, use:
+### Install Dependencies
 
-```sh
-npx nx serve auth-service
+```powershell
+npm ci
 ```
 
-To create a production bundle:
+### Environment Setup
 
-```sh
-npx nx build auth-service
+Create `.env` file in the root:
+
+```env
+# API Gateway
+PORT=8080
+
+# Auth Service
+PORT=6001
+DATABASE_URL=mongodb://localhost:27017/subkuch
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+# REDIS_PASSWORD=your_password  # Optional
 ```
 
-To see all available targets to run for a project, run:
+### Development
 
-```sh
-npx nx show project auth-service
+Run all services:
+
+```powershell
+npm run dev
 ```
 
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
+Run individual services:
 
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Add new projects
-
-While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
-
-Use the plugin's generator to create new projects.
-
-To generate a new application, use:
-
-```sh
-npx nx g @nx/node:app demo
+```powershell
+npx nx serve @subkuch.store/api-gateway
+npx nx serve @subkuch.store/auth-service
 ```
 
-To generate a new library, use:
+## Projects
 
-```sh
-npx nx g @nx/node:lib mylib
+### @subkuch.store/api-gateway
+
+API gateway with rate limiting and request proxying.
+
+- **Port:** 8080
+- **Build:** Webpack
+- **Endpoints:**
+  - `GET /gateway-health` — Health check
+  - `GET /` — Proxies to auth-service
+
+**Features:**
+- CORS with credential support
+- Request logging (morgan)
+- Rate limiting (100 req/15min unauthenticated, 1000 for authenticated)
+- Cookie parsing
+- 100MB body size limit
+
+### @subkuch.store/auth-service
+
+Authentication service with OTP-based registration.
+
+- **Port:** 6001
+- **Build:** esbuild
+- **Endpoints:**
+  - `GET /` — Health check
+  - `POST /api/user-registration` — OTP registration
+
+**Features:**
+- MongoDB user storage (Prisma ORM)
+- Redis-based OTP management (5min TTL)
+- Rate limiting and spam prevention
+- Email OTP delivery (Nodemailer)
+- Docker support
+
+**OTP Flow:**
+1. Validates user input (email, name, password)
+2. Checks for existing user
+3. Enforces cooldowns and rate limits
+4. Generates 4-digit OTP
+5. Sends email via Nodemailer
+6. Stores OTP in Redis (5min expiry)
+
+### @subkuch.store/auth-service-e2e
+
+End-to-end test suite for auth-service.
+
+```powershell
+npx nx e2e @subkuch.store/auth-service-e2e
 ```
 
-You can use `npx nx list` to get a list of installed plugins. Then, run `npx nx list <plugin-name>` to learn about more specific capabilities of a particular plugin. Alternatively, [install Nx Console](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) to browse plugins and generators in your IDE.
+## Shared Packages
 
-[Learn more about Nx plugins &raquo;](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) | [Browse the plugin registry &raquo;](https://nx.dev/plugin-registry?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+### packages/error-handler
 
+Centralized error handling:
 
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+- Custom error classes: `ValidationError`, `AuthError`, `NotFoundError`, etc.
+- Express middleware for consistent error responses
+- Structured JSON error output
 
-## Install Nx Console
+### packages/libs/prisma
 
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
+MongoDB ORM client (Prisma):
 
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+- Schema: `prisma/schema.prisma`
+- Models: `users`, `images`
+- Generated client: `generated/prisma/`
 
-## Useful links
+### packages/libs/redis
 
-Learn more:
+Redis client (ioredis):
 
-- [Learn more about this workspace setup](https://nx.dev/nx-api/node?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+- Singleton instance
+- Used for OTP storage, rate limiting, cooldowns
 
-And join the Nx community:
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+## Common Commands
+
+### Build
+
+```powershell
+# Build all projects
+npx nx run-many -t build --all
+
+# Build specific project
+npx nx build @subkuch.store/api-gateway
+npx nx build @subkuch.store/auth-service
+```
+
+### Test
+
+```powershell
+# Run unit tests
+npx nx test @subkuch.store/auth-service
+
+# Run e2e tests
+npx nx e2e @subkuch.store/auth-service-e2e
+
+# Typecheck all
+npx nx run-many -t typecheck --all
+```
+
+### Docker (auth-service)
+
+```powershell
+# Build image
+npx nx docker:build @subkuch.store/auth-service
+
+# Run container
+npx nx docker:run @subkuch.store/auth-service -- -p 3000:3000
+```
+
+### Swagger Documentation
+
+Generate API docs for auth-service:
+
+```powershell
+cd apps/auth-service/src
+node swagger.mjs
+```
+
+Output: `apps/auth-service/src/swagger-output.json`
+
+## Architecture
+
+```
+┌─────────────────┐
+│  API Gateway    │  Port 8080
+│  (Rate Limit)   │
+└────────┬────────┘
+         │ Proxy
+         ▼
+┌─────────────────┐
+│  Auth Service   │  Port 6001
+│                 │
+├─────────────────┤
+│  Controllers    │
+│  Routes         │
+│  Utilities      │
+└─────┬─────┬─────┘
+      │     │
+      ▼     ▼
+┌───────┐  ┌──────┐
+│MongoDB│  │Redis │
+│(Users)│  │(OTP) │
+└───────┘  └──────┘
+```
+
+## Nx Commands
+
+### Visualize Dependency Graph
+
+```powershell
+npx nx graph
+```
+
+### Show Project Details
+
+```powershell
+npx nx show project @subkuch.store/auth-service
+```
+
+### Clear Cache
+
+```powershell
+npx nx reset
+```
+
+### Run Without Cache
+
+```powershell
+npx nx build @subkuch.store/auth-service --skip-nx-cache
+```
+
+## API Reference
+
+### api-gateway (http://localhost:8080)
+
+#### GET /gateway-health
+Health check endpoint.
+
+**Response:**
+```json
+{
+  "message": "Welcome to api-gateway!"
+}
+```
+
+#### GET /
+Proxies to auth-service.
+
+### auth-service (http://localhost:6001)
+
+#### GET /
+Health check endpoint.
+
+**Response:**
+```json
+{
+  "message": "Hello API"
+}
+```
+
+#### POST /api/user-registration
+Initiates OTP-based user registration.
+
+**Request Body:**
+```json
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "password": "secure_password",
+  "phone_number": "+1234567890",  // Optional for sellers
+  "country": "US"                  // Optional for sellers
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "message": "OTP sent to your email. Please verify to complete registration."
+}
+```
+
+**Error Responses:**
+- `400` — Validation error (invalid email, missing fields)
+- `400` — User already exists
+- `400` — OTP cooldown (wait 1 minute)
+- `400` — Too many OTP requests (hourly limit)
+- `400` — Account locked (multiple failed attempts)
+
+## Troubleshooting
+
+### MongoDB Connection Issues
+
+Verify `DATABASE_URL` format:
+
+```env
+# Local MongoDB
+DATABASE_URL=mongodb://localhost:27017/subkuch
+
+# MongoDB Atlas
+DATABASE_URL=mongodb+srv://username:password@cluster.mongodb.net/database
+```
+
+### Redis Connection Issues
+
+Check Redis is running:
+
+```powershell
+redis-cli ping
+# Expected: PONG
+```
+
+### Port Already in Use
+
+Change ports in `.env`:
+
+```env
+PORT=8081  # api-gateway
+PORT=6002  # auth-service
+```
+
+### TypeScript Errors
+
+Run typecheck to see errors:
+
+```powershell
+npx nx run-many -t typecheck --all
+```
+
+## Documentation
+
+- **Architecture & Details:** `docs/CONTEXT.md`
+- **Agent Instructions:** `AGENTS.md`
+- **Nx Documentation:** [nx.dev](https://nx.dev)
+
+## Tech Stack
+
+- **Runtime:** Node.js 20+
+- **Language:** TypeScript 5.9
+- **Framework:** Express 4.21
+- **Build Tools:** Nx 21.6, Webpack 5, esbuild 0.19
+- **Database:** MongoDB (via Prisma 6.18)
+- **Cache/Queue:** Redis (via ioredis 5.8)
+- **Email:** Nodemailer 7.0
+- **Testing:** Jest 30
+- **Container:** Docker
