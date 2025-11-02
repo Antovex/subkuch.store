@@ -1,6 +1,6 @@
 ﻿# Project Context and Agent Instructions
 
-**Updated:** 2025-11-01
+**Updated:** 2025-11-02
 
 ## Overview
 
@@ -12,6 +12,8 @@ Nx 21.6.5 monorepo for an e-commerce platform built with Node.js/TypeScript micr
 - **Shared Packages** — Reusable error handling, Prisma MongoDB client, Redis client
 
 All projects use Nx for orchestration, caching, and task execution. **Always prefer `nx` commands over raw tool CLIs** to leverage Nx's dependency graph and caching.
+
+**Nx Cloud:** Connected (ID: 68f7b1fa64ec897f6e1d398b) for distributed caching and CI analytics.
 
 ---
 
@@ -29,11 +31,12 @@ All projects use Nx for orchestration, caching, and task execution. **Always pre
 
 **Available Targets:**
 - `typecheck` — TypeScript validation
-- `build` — Webpack production build
-- `serve` — Development server (depends on build)
+- `build` — Webpack production build (outputs to `dist/apps/api-gateway`)
+- `serve` — Node.js server running built output (depends on build)
 - `preview` — Webpack dev server in production mode
-- `serve-static` — Serve pre-built static files
+- `serve-static` — Serve pre-built static files with file server
 - `build-deps`, `watch-deps` — Dependency management
+- `prune-lockfile`, `copy-workspace-modules`, `prune` — Deployment optimization
 
 **Endpoints:**
 - `GET /gateway-health` — Returns `{ message: "Welcome to api-gateway!" }`
@@ -89,11 +92,13 @@ npx nx serve @subkuch.store/api-gateway
 
 **Available Targets:**
 - `typecheck` — TypeScript validation
-- `test` — Jest unit tests
-- `build` — esbuild production build
-- `serve` — Run built output with Node.js
-- `docker:build` — Build Docker image
+- `test` — Jest unit tests (with coverage support)
+- `build` — esbuild production build (outputs to `apps/auth-service/dist`)
+- `serve` — Node.js server running built output (depends on build)
+- `docker:build` — Build Docker image (tag: `apps-auth-service`)
 - `docker:run` — Run Docker container
+- `nx-release-publish` — Publish Docker image to registry
+- `prune-lockfile`, `copy-workspace-modules`, `prune` — Deployment optimization
 
 **Endpoints:**
 - `GET /` — Health check, returns `{ message: "Hello API" }`
@@ -260,14 +265,14 @@ npx nx e2e @subkuch.store/auth-service-e2e
 
 **Error Classes (all extend `AppError`):**
 - `AppError(message, statusCode, isOperational, details?)` — Base error class
-- `ValidationError(message?, details?)` — 400 validation errors
-- `AuthError(message?)` — 401 authentication errors
-- `ForbiddenError(message?)` — 403 authorization errors
-- `NotFoundError(message?)` — 404 resource not found
-- `RateLimitError(message?)` — 429 rate limit exceeded
-- `DatabaseError(message?)` — 500 database errors
-- `ExternalServiceError(message?)` — 502 external API errors
-- `TimeoutError(message?)` — 504 request timeout
+- `NotFoundError(message?)` — 404 resource not found (default: "Resource not found")
+- `ValidationError(message?, details?)` — 400 validation errors (default: "Invalid request data! Validation failed...")
+- `AuthError(message?)` — 401 authentication errors (default: "Authentication failed")
+- `ForbiddenError(message?)` — 403 authorization errors (default: "Access forbidden")
+- `DatabaseError(message?)` — 500 database errors (default: "Database operation failed")
+- `RateLimitError(message?)` — 429 rate limit exceeded (default: "Rate limit exceeded")
+- `ExternalServiceError(message?)` — 502 external API errors (default: "External service error")
+- `TimeoutError(message?)` — 504 request timeout (default: "Request timeout")
 
 **Middleware:**
 - `errorMiddleware(err, req, res)` — Express error handler
@@ -349,6 +354,14 @@ const user = await prisma.user.findUnique({ where: { email } });
 ```
 packages/libs/prisma/
 └── index.ts              # Prisma singleton export
+
+generated/prisma/         # Generated Prisma client (custom output path)
+├── client.ts
+├── models.ts
+├── enums.ts
+└── models/
+    ├── users.ts
+    └── images.ts
 ```
 
 ---
@@ -859,6 +872,50 @@ app.use(errorMiddleware); // MUST be last
 
 ## Quick Reference
 
+### Project Structure at a Glance
+
+```
+subkuch.store/
+├── apps/
+│   ├── api-gateway/          # API Gateway (Webpack, port 8080)
+│   ├── auth-service/         # Auth Service (esbuild, port 6001)
+│   └── auth-service-e2e/     # E2E tests for auth-service
+├── packages/
+│   ├── error-handler/        # Centralized error handling
+│   └── libs/
+│       ├── prisma/           # MongoDB ORM singleton
+│       └── redis/            # Redis client singleton
+├── prisma/
+│   └── schema.prisma         # Database schema (users, images)
+├── generated/prisma/         # Generated Prisma client
+├── docs/
+│   └── CONTEXT.md           # This file - complete project documentation
+├── .env                      # Environment variables (not in git)
+├── .env.example              # Environment template
+├── AGENTS.md                 # Quick reference for AI agents
+├── README.md                 # User-facing documentation
+├── nx.json                   # Nx workspace configuration
+├── package.json              # Root dependencies and scripts
+└── tsconfig.base.json        # Shared TypeScript configuration
+```
+
+### Nx Workspace Configuration
+
+**Plugins:**
+1. `@nx/js/typescript` — TypeScript compilation and validation
+2. `@nx/jest/plugin` — Jest testing (excluding e2e projects)
+3. `@nx/docker` — Docker build and run targets
+4. `@nx/webpack/plugin` — Webpack build system
+
+**Target Defaults:**
+- `@nx/esbuild:esbuild` — Caching enabled, depends on `^build`, uses production inputs
+- `test` — Depends on `^build` to ensure dependencies are built first
+
+**Named Inputs:**
+- `default` — All project files + shared globals
+- `production` — Default minus test files, spec configs, and test setup files
+- `sharedGlobals` — CI workflow file (`.github/workflows/ci.yml`)
+
 ### Endpoints Summary
 
 **api-gateway (http://localhost:8080):**
@@ -869,13 +926,15 @@ app.use(errorMiddleware); // MUST be last
 - `GET /` → Health check
 - `POST /api/user-registration` → OTP registration
 
-### Redis Keys
+### Redis Keys Reference
 
-- `otp:{email}` — OTP value (5min)
-- `otp_cooldown:{email}` — Cooldown flag (1min)
-- `otp_request_count:{email}` — Request counter (1hr)
-- `otp_spam_lock:{email}` — Spam lock (1hr)
-- `otp_lock:{email}` — Failed attempts lock (30min)
+| Key Pattern | Purpose | TTL | Set By |
+|-------------|---------|-----|--------|
+| `otp:{email}` | Store 4-digit OTP | 5 min (300s) | `sendOtp()` |
+| `otp_cooldown:{email}` | Prevent rapid requests | 1 min (60s) | `sendOtp()` |
+| `otp_request_count:{email}` | Track hourly requests | 1 hour (3600s) | `trackOtpRequest()` |
+| `otp_spam_lock:{email}` | Anti-spam lock (≥2 req/hr) | 1 hour (3600s) | `trackOtpRequest()` |
+| `otp_lock:{email}` | Failed verification lock | 30 min (1800s) | Manual (future) |
 
 ### Rate Limits
 

@@ -1,45 +1,110 @@
 ﻿# SubkuchStore
 
-E-commerce microservices platform built with Nx monorepo architecture.
+[![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
+[![Nx](https://img.shields.io/badge/Nx-21.6-brightgreen.svg)](https://nx.dev)
+
+> E-commerce microservices platform built with Nx monorepo architecture
+
+## 📋 Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Quick Start](#quick-start)
+- [Projects](#projects)
+- [Shared Packages](#shared-packages)
+- [Architecture](#architecture)
+- [API Reference](#api-reference)
+- [Common Commands](#common-commands)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
 
 ## Overview
 
-Nx-powered Node.js/TypeScript monorepo containing:
+SubkuchStore is a modern, scalable e-commerce platform built as a microservices architecture using Nx monorepo. This repository contains:
 
 - **API Gateway** — Rate-limited reverse proxy with CORS and request logging
 - **Auth Service** — OTP-based authentication with MongoDB and Redis
 - **E2E Tests** — Automated testing suite for auth flows
 - **Shared Packages** — Reusable error handling, database clients
 
-## Quick Start
+## ✨ Features
+
+- 🏗️ **Nx Monorepo** — Efficient build system with caching and task orchestration
+- 🔐 **Secure Authentication** — OTP-based registration with email verification
+- 🚀 **API Gateway** — Centralized routing with rate limiting and security
+- 📦 **Shared Libraries** — DRY principle with reusable packages
+- 🐳 **Docker Ready** — Containerized services for easy deployment
+- 🧪 **Comprehensive Testing** — Unit and E2E tests with Jest
+- 📊 **Database ORM** — Type-safe Prisma client for MongoDB
+- ⚡ **Redis Caching** — Fast OTP storage and rate limiting
+- 📧 **Email Integration** — Nodemailer for transactional emails
+
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 20+
-- npm 8+
-- MongoDB (local or Atlas connection string)
-- Redis server (optional for OTP features)
+Before you begin, ensure you have the following installed:
 
-### Install Dependencies
+- **Node.js** 20+ ([Download](https://nodejs.org/))
+- **npm** 8+ (comes with Node.js)
+- **MongoDB** ([Local installation](https://www.mongodb.com/try/download/community) or [Atlas cloud](https://www.mongodb.com/cloud/atlas))
+- **Redis** ([Download](https://redis.io/download)) - Required for OTP and caching features
+- **Git** ([Download](https://git-scm.com/downloads))
+
+### Installation
+
+1. **Clone the repository:**
+
+```powershell
+git clone https://github.com/Antovex/subkuch.store.git
+cd subkuch.store
+```
+
+2. **Install dependencies:**
 
 ```powershell
 npm ci
 ```
 
-### Environment Setup
+3. **Set up environment variables:**
 
-Create `.env` file in the root:
+Create a `.env` file in the root directory:
 
 ```env
-# API Gateway
+# API Gateway Configuration
 PORT=8080
 
-# Auth Service
+# Auth Service Configuration
 PORT=6001
+HOST=localhost
+
+# Database Configuration
 DATABASE_URL=mongodb://localhost:27017/subkuch
+# For MongoDB Atlas:
+# DATABASE_URL=mongodb+srv://username:password@cluster.mongodb.net/database
+
+# Redis Configuration
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
-# REDIS_PASSWORD=your_password  # Optional
+# REDIS_PASSWORD=your_password  # Optional, uncomment if needed
+
+# Email Configuration (for OTP delivery)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+
+# Security Configuration
+JWT_SECRET=your-super-secret-jwt-key
+OTP_EXPIRY=300  # 5 minutes in seconds
+```
+
+4. **Initialize the database:**
+
+```powershell
+npx prisma generate
+npx prisma db push
 ```
 
 ### Development
@@ -335,14 +400,69 @@ npx nx run-many -t typecheck --all
 - **Agent Instructions:** `AGENTS.md`
 - **Nx Documentation:** [nx.dev](https://nx.dev)
 
-## Tech Stack
+## 🛠️ Tech Stack
 
+### Core
 - **Runtime:** Node.js 20+
 - **Language:** TypeScript 5.9
 - **Framework:** Express 4.21
-- **Build Tools:** Nx 21.6, Webpack 5, esbuild 0.19
+- **Monorepo:** Nx 21.6
+
+### Build & Bundle
+- **Build Tools:** Webpack 5, esbuild 0.19
+- **Module Bundler:** Nx build system with smart caching
+
+### Data Layer
 - **Database:** MongoDB (via Prisma 6.18)
+- **ORM:** Prisma Client with TypeScript support
 - **Cache/Queue:** Redis (via ioredis 5.8)
+
+### Communication
 - **Email:** Nodemailer 7.0
+- **HTTP Client:** Axios (for service-to-service communication)
+
+### Development Tools
 - **Testing:** Jest 30
+- **Linting:** ESLint
 - **Container:** Docker
+- **API Documentation:** Swagger
+
+## 📁 Project Structure
+
+```
+subkuch.store/
+├── apps/
+│   ├── api-gateway/          # API Gateway service
+│   ├── auth-service/          # Authentication service
+│   └── auth-service-e2e/      # E2E tests for auth service
+├── packages/
+│   ├── error-handler/         # Centralized error handling
+│   └── libs/
+│       ├── prisma/            # Prisma ORM client
+│       └── redis/             # Redis client
+├── prisma/
+│   └── schema.prisma          # Database schema
+├── docs/                      # Additional documentation
+├── generated/                 # Generated Prisma client
+├── nx.json                    # Nx workspace configuration
+└── package.json               # Root package configuration
+```
+
+## 🤝 Contributing
+
+We welcome contributions! Please follow these steps:
+
+1. **Fork the repository**
+2. **Create a feature branch:**
+   ```powershell
+   git checkout -b feature/amazing-feature
+   ```
+3. **Make your changes and commit:**
+   ```powershell
+   git commit -m "feat: add amazing feature"
+   ```
+4. **Push to your branch:**
+   ```powershell
+   git push origin feature/amazing-feature
+   ```
+5. **Open a Pull Request**
