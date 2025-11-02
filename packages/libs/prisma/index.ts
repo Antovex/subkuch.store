@@ -1,4 +1,5 @@
-import { PrismaClient } from "@prisma/client";
+// Use the generated Prisma client output located at generated/prisma
+import { PrismaClient } from "../../../generated/prisma/client";
 
 declare global {
     namespace globalThis {

@@ -1,10 +1,10 @@
 ﻿import express from "express";
 import cors from "cors";
-import { errorMiddleware } from "../../../packages/error-handler/error-middleware";
+import { errorMiddleware } from "@packages/error-handler/error-middleware";
 import cookieParser from "cookie-parser";
 import router from "./routes/auth.router";
 import swaggerUi from 'swagger-ui-express';
-const swaggerUiDocument = require('./swagger/swagger-document.json');
+const swaggerUiDocument = require('./swagger-output.json');
 
 const app = express();
 
@@ -24,9 +24,9 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerUiDocument));
-app.get("/docs-josn", (req, res) => {
+app.get("/docs.json", (req, res) => {
   res.json(swaggerUiDocument);
-})
+});
 // Routes
 app.use('/api', router);
 
@@ -36,7 +36,8 @@ const port = process.env.PORT ? Number(process.env.PORT) : 6001;
 
 const server = app.listen(port, () => {
   console.log(`Listening at http://localhost:${port}/`);
-  console.log(`API Docs at http://localhost:${port}/docs`); ///docs-josn
+  console.log(`API Docs UI at http://localhost:${port}/api-docs`);
+  console.log(`API Docs JSON at http://localhost:${port}/docs.json`);
 });
 
 server.on("error", (err) => {
