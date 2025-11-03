@@ -66,14 +66,11 @@ export const sendOtp = async (
     await redis.set(`otp_cooldown:${email}`, "true", "EX", 60); // Cooldown of 1 minute
 };
 
-export const trackOtpRequest = async (
-    email: string,
-    next: NextFunction
-) => {
+export const trackOtpRequest = async (email: string, next: NextFunction) => {
     const otpRequestKey = `otp_request_count:${email}`;
-    let requestCount = parseInt(await redis.get(otpRequestKey) || "0");
+    let requestCount = parseInt((await redis.get(otpRequestKey)) || "0");
 
-    if(requestCount >= 2) {
+    if (requestCount >= 2) {
         await redis.set(`otp_spam_lock:${email}`, "locked", "EX", 3600); // 1 hour lock
         return next(
             new ValidationError(
@@ -83,4 +80,40 @@ export const trackOtpRequest = async (
     }
 
     await redis.set(otpRequestKey, requestCount + 1, "EX", 3600); // tracking otp of particular email for 1 hour
-}
+};
+
+export const verifyOtp = async (
+    email: string,
+    otp: string,
+    next: NextFunction
+) => {
+    const storedOtp = await redis.get(`otp:${email}`);
+    if (!storedOtp) {
+        throw new ValidationError(
+            "OTP expired or not found. Please request a new one."
+        );
+    }
+
+    const failedAttemptsKey = `otp_attempts:${email}`;
+    const failedAttempts = parseInt(
+        (await redis.get(failedAttemptsKey)) || "0"
+    );
+
+    if (storedOtp !== otp) {
+        if (failedAttempts >= 2) {
+            await redis.set(`otp_lock:${email}`, "locked", "EX", 1800); // 30 minutes lock
+            await redis.del(`otp:${email}`, failedAttemptsKey);
+            throw new ValidationError(
+                "Account locked due to multiple failed OTP attempts. Please try again after 30 minutes."
+            );
+        }
+        await redis.set(failedAttemptsKey, failedAttempts + 1, "EX", 300); // track failed attempts for 5 minutes
+        throw new ValidationError(
+            `Invalid OTP. You have ${2 - failedAttempts} attempts left.`
+        );
+    }
+
+    await redis.del(`otp:${email}`, failedAttemptsKey);
+    // OTP verified successfully
+    // Proceed with further registration steps
+};
