@@ -4,7 +4,7 @@ import { NextFunction } from "express";
 import redis from "@packages/libs/redis";
 import { sendEmail } from "./sendMail";
 
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const validateRegistrationData = (
     data: any,

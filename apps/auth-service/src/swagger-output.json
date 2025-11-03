@@ -13,19 +13,35 @@
   "paths": {
     "/user-registration": {
       "post": {
-        "description": "",
+        "description": "Register a new user and send OTP verification email",
         "parameters": [
           {
             "name": "body",
             "in": "body",
+            "description": "User registration information",
+            "required": true,
             "schema": {
               "type": "object",
               "properties": {
                 "name": {
-                  "example": "any"
+                  "type": "string",
+                  "example": "John Doe"
                 },
                 "email": {
-                  "example": "any"
+                  "type": "string",
+                  "example": "john@example.com"
+                },
+                "password": {
+                  "type": "string",
+                  "example": "SecurePass123!"
+                },
+                "phone_number": {
+                  "type": "string",
+                  "example": "+1234567890"
+                },
+                "country": {
+                  "type": "string",
+                  "example": "US"
                 }
               }
             }
@@ -33,32 +49,41 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OTP sent successfully"
+          },
+          "400": {
+            "description": "Validation error or user already exists"
           }
         }
       }
     },
     "/verify-user": {
       "post": {
-        "description": "",
+        "description": "Verify OTP and complete user registration",
         "parameters": [
           {
             "name": "body",
             "in": "body",
+            "description": "OTP verification and user details",
+            "required": true,
             "schema": {
               "type": "object",
               "properties": {
                 "email": {
-                  "example": "any"
+                  "type": "string",
+                  "example": "john@example.com"
                 },
                 "otp": {
-                  "example": "any"
+                  "type": "string",
+                  "example": "1234"
                 },
                 "password": {
-                  "example": "any"
+                  "type": "string",
+                  "example": "SecurePass123!"
                 },
                 "name": {
-                  "example": "any"
+                  "type": "string",
+                  "example": "John Doe"
                 }
               }
             }
@@ -66,7 +91,10 @@
         ],
         "responses": {
           "201": {
-            "description": "Created"
+            "description": "User registered successfully"
+          },
+          "400": {
+            "description": "Validation error, invalid OTP, or user already exists"
           }
         }
       }
