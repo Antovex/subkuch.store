@@ -3,42 +3,47 @@
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Nx](https://img.shields.io/badge/Nx-21.6-brightgreen.svg)](https://nx.dev)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > E-commerce microservices platform built with Nx monorepo architecture
 
 ## 📋 Table of Contents
 
 - [Overview](#overview)
-- [Features](#features)
-- [Quick Start](#quick-start)
-- [Projects](#projects)
-- [Shared Packages](#shared-packages)
-- [Architecture](#architecture)
-- [API Reference](#api-reference)
-- [Common Commands](#common-commands)
-- [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
+- [Features](#-features)
+- [Quick Start](#-quick-start)
+- [Projects](#-projects)
+- [Shared Packages](#-shared-packages)
+- [Architecture](#-architecture)
+- [Common Commands](#-common-commands)
+- [Troubleshooting](#-troubleshooting)
+- [Documentation](#-documentation)
+- [Tech Stack](#-tech-stack)
+- [Project Structure](#-project-structure)
+- [Contributing](#-contributing)
+- [License](#license)
 
 ## Overview
 
 SubkuchStore is a modern, scalable e-commerce platform built as a microservices architecture using Nx monorepo. This repository contains:
 
-- **API Gateway** — Rate-limited reverse proxy with CORS and request logging
-- **Auth Service** — OTP-based authentication with MongoDB and Redis
+- **API Gateway** (Port 8080) — Rate-limited reverse proxy with CORS and request logging
+- **Auth Service** (Port 6001) — OTP-based authentication with MongoDB and Redis
 - **E2E Tests** — Automated testing suite for auth flows
-- **Shared Packages** — Reusable error handling, database clients
+- **Shared Packages** — Reusable error handling, Prisma client, Redis client
 
 ## ✨ Features
 
 - 🏗️ **Nx Monorepo** — Efficient build system with caching and task orchestration
 - 🔐 **Secure Authentication** — OTP-based registration with email verification
-- 🚀 **API Gateway** — Centralized routing with rate limiting and security
+- 🚀 **API Gateway** — Centralized routing with rate limiting (100-1000 req/15min)
 - 📦 **Shared Libraries** — DRY principle with reusable packages
 - 🐳 **Docker Ready** — Containerized services for easy deployment
 - 🧪 **Comprehensive Testing** — Unit and E2E tests with Jest
 - 📊 **Database ORM** — Type-safe Prisma client for MongoDB
-- ⚡ **Redis Caching** — Fast OTP storage and rate limiting
-- 📧 **Email Integration** — Nodemailer for transactional emails
+- ⚡ **Redis Caching** — Fast OTP storage, rate limiting, and spam protection
+- 📧 **Email Integration** — Nodemailer with EJS templates for transactional emails
+- 📝 **API Documentation** — Interactive Swagger UI at `/api-docs`
 
 ## 🚀 Quick Start
 
@@ -69,7 +74,7 @@ npm ci
 
 3. **Set up environment variables:**
 
-Create a `.env` file in the root directory:
+Create a `.env` file in the root directory (see `.env.example` for template):
 
 ```env
 # API Gateway Configuration
@@ -79,7 +84,7 @@ PORT=8080
 PORT=6001
 HOST=localhost
 
-# Database Configuration
+# Database Configuration (MongoDB)
 DATABASE_URL=mongodb://localhost:27017/subkuch
 # For MongoDB Atlas:
 # DATABASE_URL=mongodb+srv://username:password@cluster.mongodb.net/database
@@ -87,18 +92,17 @@ DATABASE_URL=mongodb://localhost:27017/subkuch
 # Redis Configuration
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
-# REDIS_PASSWORD=your_password  # Optional, uncomment if needed
+REDIS_PASSWORD=          # Leave empty if no password
 
-# Email Configuration (for OTP delivery)
+# Email Configuration (Nodemailer)
 SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-password
-
-# Security Configuration
-JWT_SECRET=your-super-secret-jwt-key
-OTP_EXPIRY=300  # 5 minutes in seconds
+SMTP_PORT=465
+SMTP_SERVICE=gmail
+SMTP_USER=               # Your Gmail address
+SMTP_PASSWORD=           # App password if 2FA enabled (see below)
 ```
+
+**Gmail 2FA Users:** Generate an App Password at Google Account → Security → 2-Step Verification → App Passwords
 
 4. **Initialize the database:**
 
@@ -107,99 +111,271 @@ npx prisma generate
 npx prisma db push
 ```
 
-### Development
-
-Run all services:
+5. **Start the services:**
 
 ```powershell
+# Start all services in parallel
 npm run dev
+
+# Or start individually
+npx nx serve '@subkuch.store/api-gateway'
+npx nx serve '@subkuch.store/auth-service'
 ```
 
-Run individual services:
+6. **Access the services:**
 
-```powershell
-npx nx serve @subkuch.store/api-gateway
-npx nx serve @subkuch.store/auth-service
-```
+- **API Gateway:** http://localhost:8080/gateway-health
+- **Auth Service:** http://localhost:6001/
+- **Swagger API Docs:** http://localhost:6001/api-docs
+- **API Docs JSON:** http://localhost:6001/docs.json
 
-## Projects
+## 📂 Projects
 
 ### @subkuch.store/api-gateway
 
-API gateway with rate limiting and request proxying.
+**Purpose:** API gateway with rate limiting and reverse proxy to backend services.
 
-- **Port:** 8080
-- **Build:** Webpack
-- **Endpoints:**
-  - `GET /gateway-health` — Health check
-  - `GET /` — Proxies to auth-service
+- **Port:** 8080 (configurable via `PORT` env)
+- **Build:** Webpack 5
+- **Entry:** `apps/api-gateway/src/main.ts`
+
+**Endpoints:**
+- `GET /gateway-health` — Health check endpoint
+- `GET /*` — Proxies all other traffic to auth-service (http://localhost:6001)
 
 **Features:**
-- CORS with credential support
-- Request logging (morgan)
-- Rate limiting (100 req/15min unauthenticated, 1000 for authenticated)
-- Cookie parsing
-- 100MB body size limit
+- ✅ CORS configured for `http://localhost:3000` with credentials
+- ✅ Request logging via Morgan (dev mode)
+- ✅ Rate limiting:
+  - Unauthenticated: 100 requests per 15 minutes (by IP)
+  - Authenticated: 1000 requests per 15 minutes (by API key)
+- ✅ Cookie parsing support
+- ✅ 100MB request body limit
+- ✅ Trust proxy enabled
+
+**Commands:**
+```powershell
+npx nx build '@subkuch.store/api-gateway'
+npx nx serve '@subkuch.store/api-gateway'
+```
+
+---
 
 ### @subkuch.store/auth-service
 
-Authentication service with OTP-based registration.
+**Purpose:** Authentication service with OTP-based user registration and verification.
 
-- **Port:** 6001
-- **Build:** esbuild
-- **Endpoints:**
-  - `GET /` — Health check
-  - `POST /api/user-registration` — OTP registration
+- **Port:** 6001 (configurable via `PORT` env)
+- **Build:** Webpack (esbuild alternative available)
+- **Entry:** `apps/auth-service/src/main.ts`
+- **Database:** MongoDB via Prisma ORM
+- **Cache:** Redis for OTP and rate limiting
 
-**Features:**
-- MongoDB user storage (Prisma ORM)
-- Redis-based OTP management (5min TTL)
-- Rate limiting and spam prevention
-- Email OTP delivery (Nodemailer)
-- Docker support
+**API Endpoints:**
 
-**OTP Flow:**
-1. Validates user input (email, name, password)
-2. Checks for existing user
-3. Enforces cooldowns and rate limits
-4. Generates 4-digit OTP
-5. Sends email via Nodemailer
-6. Stores OTP in Redis (5min expiry)
+#### `GET /`
+Health check endpoint
+```json
+Response: { "message": "Hello API" }
+```
+
+#### `POST /api/user-registration`
+Register a new user and send OTP via email
+
+**Request Body:**
+```json
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "password": "SecurePass123!",
+  "phone_number": "+1234567890",  // Optional (required for sellers)
+  "country": "US"                  // Optional (required for sellers)
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "message": "OTP sent to your email. Please verify to complete registration."
+}
+```
+
+**Error Responses (400):**
+- Missing required fields
+- Invalid email format
+- User already exists
+- Too many OTP requests (spam protection)
+- Account locked due to failed attempts
+
+#### `POST /api/verify-user`
+Verify OTP and complete user registration
+
+**Request Body:**
+```json
+{
+  "email": "john@example.com",
+  "otp": "1234",
+  "password": "SecurePass123!",
+  "name": "John Doe"
+}
+```
+
+**Success Response (201):**
+```json
+{
+  "success": true,
+  "message": "User registered successfully"
+}
+```
+
+**OTP Security Features:**
+- ✅ 4-digit random OTP (1000-9999)
+- ✅ 5-minute expiry (configurable)
+- ✅ 1-minute cooldown between requests
+- ✅ 2 requests per hour limit
+- ✅ 1-hour spam lock after exceeding limits
+- ✅ 30-minute account lock after multiple failed verifications
+
+**Redis Keys:**
+| Key Pattern | Purpose | TTL |
+|-------------|---------|-----|
+| `otp:{email}` | Store OTP value | 5 minutes |
+| `otp_cooldown:{email}` | Prevent rapid requests | 1 minute |
+| `otp_request_count:{email}` | Track hourly requests | 1 hour |
+| `otp_spam_lock:{email}` | Spam protection lock | 1 hour |
+| `otp_lock:{email}` | Failed verification lock | 30 minutes |
+
+**Commands:**
+```powershell
+# Development
+npx nx build '@subkuch.store/auth-service'
+npx nx serve '@subkuch.store/auth-service'
+
+# Docker
+npx nx docker:build '@subkuch.store/auth-service'
+npx nx docker:run '@subkuch.store/auth-service' -- -p 3000:3000
+
+# Generate Swagger docs
+cd apps/auth-service/src
+node swagger.mjs
+```
+
+---
 
 ### @subkuch.store/auth-service-e2e
 
-End-to-end test suite for auth-service.
+**Purpose:** End-to-end testing suite for auth-service.
 
+- **Framework:** Jest 30
+- **Type:** E2E tests
+- **Dependencies:** Requires auth-service build and serve
+
+**Commands:**
 ```powershell
-npx nx e2e @subkuch.store/auth-service-e2e
+npx nx e2e '@subkuch.store/auth-service-e2e'
 ```
 
-## Shared Packages
+---
+
+## 📦 Shared Packages
 
 ### packages/error-handler
 
-Centralized error handling:
+Centralized error handling for all services.
 
-- Custom error classes: `ValidationError`, `AuthError`, `NotFoundError`, etc.
-- Express middleware for consistent error responses
-- Structured JSON error output
+**Error Classes:**
+- `AppError` — Base error class with status codes
+- `ValidationError` — 400 validation errors
+- `AuthError` — 401 authentication errors
+- `ForbiddenError` — 403 authorization errors
+- `NotFoundError` — 404 resource not found
+- `DatabaseError` — 500 database errors
+- `RateLimitError` — 429 rate limit exceeded
+- `TimeoutError` — 504 request timeout
+
+**Middleware:**
+```typescript
+import { errorMiddleware } from "@packages/error-handler/error-middleware";
+app.use(errorMiddleware); // Must be last
+```
 
 ### packages/libs/prisma
 
-MongoDB ORM client (Prisma):
+MongoDB ORM client singleton.
 
-- Schema: `prisma/schema.prisma`
-- Models: `users`, `images`
-- Generated client: `generated/prisma/`
+**Models:**
+- `users` — User accounts with email, password, avatar
+- `images` — User profile images
+
+**Usage:**
+```typescript
+import prisma from "@packages/libs/prisma";
+const user = await prisma.users.findUnique({ where: { email } });
+```
 
 ### packages/libs/redis
 
-Redis client (ioredis):
+Redis client singleton for caching and OTP management.
 
-- Singleton instance
-- Used for OTP storage, rate limiting, cooldowns
+**Usage:**
+```typescript
+import redis from "@packages/libs/redis";
+await redis.set("otp:user@example.com", "1234", "EX", 300);
+const otp = await redis.get("otp:user@example.com");
+```
 
-## Common Commands
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────┐
+│         Client (Browser)            │
+│      http://localhost:3000          │
+└──────────────┬──────────────────────┘
+               │
+               │ HTTP Requests
+               │
+               ▼
+┌──────────────────────────────────────┐
+│    API Gateway (Port 8080)           │
+│  ┌────────────────────────────────┐  │
+│  │ Rate Limiter                   │  │
+│  │ CORS Handler                   │  │
+│  │ Request Logger                 │  │
+│  │ Cookie Parser                  │  │
+│  └────────────┬───────────────────┘  │
+│               │ Reverse Proxy        │
+└───────────────┼──────────────────────┘
+                │
+                ▼
+┌──────────────────────────────────────┐
+│  Auth Service (Port 6001)            │
+│  ┌────────────────────────────────┐  │
+│  │ /api/user-registration         │  │
+│  │ /api/verify-user               │  │
+│  │ /api-docs (Swagger UI)         │  │
+│  └────┬──────────────────┬────────┘  │
+└───────┼──────────────────┼────────────┘
+        │                  │
+        ▼                  ▼
+┌──────────────┐    ┌──────────────┐
+│   MongoDB    │    │    Redis     │
+│              │    │              │
+│ - users      │    │ - OTP        │
+│ - images     │    │ - Locks      │
+└──────────────┘    └──────────────┘
+```
+
+**Request Flow:**
+1. Client → API Gateway (rate limit check)
+2. API Gateway → Auth Service (proxy)
+3. Auth Service → MongoDB (user data) / Redis (OTP)
+4. Response flows back through the chain
+
+---
+
+## 🔧 Common Commands
 
 ### Build
 
@@ -246,159 +422,234 @@ node swagger.mjs
 
 Output: `apps/auth-service/src/swagger-output.json`
 
-## Architecture
-
-```
-┌─────────────────┐
-│  API Gateway    │  Port 8080
-│  (Rate Limit)   │
-└────────┬────────┘
-         │ Proxy
-         ▼
-┌─────────────────┐
-│  Auth Service   │  Port 6001
-│                 │
-├─────────────────┤
-│  Controllers    │
-│  Routes         │
-│  Utilities      │
-└─────┬─────┬─────┘
-      │     │
-      ▼     ▼
-┌───────┐  ┌──────┐
-│MongoDB│  │Redis │
-│(Users)│  │(OTP) │
-└───────┘  └──────┘
-```
-
-## Nx Commands
-
-### Visualize Dependency Graph
+### Nx Utilities
 
 ```powershell
+# Visualize dependency graph
 npx nx graph
-```
 
-### Show Project Details
+# Show project details
+npx nx show project "@subkuch.store/auth-service"
 
-```powershell
-npx nx show project @subkuch.store/auth-service
-```
-
-### Clear Cache
-
-```powershell
+# Clear Nx cache
 npx nx reset
+
+# Build without cache (for debugging)
+npx nx build "@subkuch.store/auth-service" --skip-nx-cache
 ```
 
-### Run Without Cache
+### Database Commands (Prisma)
 
 ```powershell
-npx nx build @subkuch.store/auth-service --skip-nx-cache
+# Generate Prisma client after schema changes
+npx prisma generate
+
+# Open Prisma Studio (database GUI)
+npx prisma studio
+
+# Push schema to database
+npx prisma db push
 ```
 
-## API Reference
+---
 
-### api-gateway (http://localhost:8080)
-
-#### GET /gateway-health
-Health check endpoint.
-
-**Response:**
-```json
-{
-  "message": "Welcome to api-gateway!"
-}
-```
-
-#### GET /
-Proxies to auth-service.
-
-### auth-service (http://localhost:6001)
-
-#### GET /
-Health check endpoint.
-
-**Response:**
-```json
-{
-  "message": "Hello API"
-}
-```
-
-#### POST /api/user-registration
-Initiates OTP-based user registration.
-
-**Request Body:**
-```json
-{
-  "name": "John Doe",
-  "email": "john@example.com",
-  "password": "secure_password",
-  "phone_number": "+1234567890",  // Optional for sellers
-  "country": "US"                  // Optional for sellers
-}
-```
-
-**Success Response (200):**
-```json
-{
-  "message": "OTP sent to your email. Please verify to complete registration."
-}
-```
-
-**Error Responses:**
-- `400` — Validation error (invalid email, missing fields)
-- `400` — User already exists
-- `400` — OTP cooldown (wait 1 minute)
-- `400` — Too many OTP requests (hourly limit)
-- `400` — Account locked (multiple failed attempts)
-
-## Troubleshooting
+## ⚠️ Troubleshooting
 
 ### MongoDB Connection Issues
 
-Verify `DATABASE_URL` format:
+**Problem:** Cannot connect to MongoDB
 
-```env
-# Local MongoDB
-DATABASE_URL=mongodb://localhost:27017/subkuch
+**Solutions:**
+1. Verify `DATABASE_URL` format in `.env`:
+   ```env
+   # Local MongoDB
+   DATABASE_URL=mongodb://localhost:27017/subkuch
+   
+   # MongoDB Atlas
+   DATABASE_URL=mongodb+srv://username:password@cluster.mongodb.net/database
+   ```
 
-# MongoDB Atlas
-DATABASE_URL=mongodb+srv://username:password@cluster.mongodb.net/database
-```
+2. Ensure MongoDB is running:
+   ```powershell
+   # Test connection
+   mongosh --eval "db.version()"
+   ```
+
+3. Regenerate Prisma client:
+   ```powershell
+   npx prisma generate
+   ```
 
 ### Redis Connection Issues
 
-Check Redis is running:
+**Problem:** Redis connection refused or timeout
 
-```powershell
-redis-cli ping
-# Expected: PONG
-```
+**Solutions:**
+1. Check Redis is running:
+   ```powershell
+   redis-cli ping
+   # Expected: PONG
+   ```
+
+2. Verify `.env` settings:
+   ```env
+   REDIS_HOST=127.0.0.1
+   REDIS_PORT=6379
+   REDIS_PASSWORD=          # Leave empty if no password
+   ```
+
+3. Start Redis if not running (Windows):
+   ```powershell
+   # Using WSL
+   sudo service redis-server start
+   ```
 
 ### Port Already in Use
 
-Change ports in `.env`:
+**Problem:** `EADDRINUSE: address already in use`
 
-```env
-PORT=8081  # api-gateway
-PORT=6002  # auth-service
+**Solutions:**
+1. Change ports in `.env`:
+   ```env
+   PORT=8081  # api-gateway (default 8080)
+   PORT=6002  # auth-service (default 6001)
+   ```
+
+2. Kill process using the port:
+   ```powershell
+   # Find process ID
+   netstat -ano | findstr :8080
+   
+   # Kill process (replace <PID> with actual process ID)
+   taskkill /PID <PID> /F
+   ```
+
+### Nx Project Graph Errors
+
+**Problem:** `implicitDependencies point to non-existent project`
+
+**Solutions:**
+1. Verify project names match in `package.json`:
+   ```json
+   {
+     "name": "@subkuch.store/auth-service",
+     "nx": {
+       "name": "@subkuch.store/auth-service"
+     }
+   }
+   ```
+
+2. Clear Nx cache:
+   ```powershell
+   npx nx reset
+   ```
+
+### Prisma Client Issues
+
+**Problem:** `@prisma/client did not initialize yet`
+
+**Solutions:**
+1. Check import path in `packages/libs/prisma/index.ts`:
+   ```typescript
+   import { PrismaClient } from "../../../generated/prisma/client";
+   ```
+
+2. Ensure generated folder is in `tsconfig.app.json`:
+   ```json
+   {
+     "include": ["../../generated/**/*.ts"]
+   }
+   ```
+
+3. Regenerate client:
+   ```powershell
+   npx prisma generate
+   ```
+
+### Error Middleware Issues
+
+**Problem:** `res.status is not a function` in Express error handler
+
+**Solution:** Ensure error middleware has 4 parameters:
+```typescript
+export const errorMiddleware = (
+  err: Error,
+  req: Request,
+  res: Response,
+  next: NextFunction  // Required for Express to recognize it as error middleware
+) => {
+  // ... error handling logic
+};
 ```
+
+### Email Delivery Issues
+
+**Problem:** SMTP authentication failed or emails not sending
+
+**Solutions:**
+1. For Gmail with 2FA enabled, use App Password (not regular password):
+   - Go to Google Account → Security → 2-Step Verification → App passwords
+   - Generate new app password
+   - Use it in `.env`:
+     ```env
+     SMTP_USER=your-email@gmail.com
+     SMTP_PASSWORD=your-app-password-here
+     ```
+
+2. Verify SMTP settings:
+   ```env
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=465
+   SMTP_SERVICE=gmail
+   ```
 
 ### TypeScript Errors
 
-Run typecheck to see errors:
+**Problem:** Type errors in codebase
 
-```powershell
-npx nx run-many -t typecheck --all
-```
+**Solutions:**
+1. Run typecheck to identify errors:
+   ```powershell
+   npx nx run-many -t typecheck --all
+   ```
 
-## Documentation
+2. Check for missing type definitions:
+   ```powershell
+   npm install --save-dev @types/<package-name>
+   ```
 
-- **Architecture & Details:** `docs/CONTEXT.md`
-- **Agent Instructions:** `AGENTS.md`
-- **Nx Documentation:** [nx.dev](https://nx.dev)
+### Build Errors
+
+**Problem:** Webpack or esbuild compilation errors
+
+**Solutions:**
+1. Clear build cache:
+   ```powershell
+   npx nx reset
+   rm -r dist/
+   ```
+
+2. Rebuild with verbose output:
+   ```powershell
+   npx nx build "@subkuch.store/auth-service" --verbose
+   ```
+
+3. Check for missing dependencies:
+   ```powershell
+   npm install
+   ```
+
+---
+
+## 📚 Documentation
+
+- **Comprehensive Technical Reference:** [`docs/CONTEXT.md`](docs/CONTEXT.md) — Complete architecture, configurations, troubleshooting
+- **AI Agent Instructions:** [`AGENTS.md`](AGENTS.md) — Quick reference for working with the codebase
+- **API Documentation:** [http://localhost:6001/api-docs](http://localhost:6001/api-docs) — Interactive Swagger UI (when auth-service is running)
+- **Nx Workspace:** [nx.dev](https://nx.dev) — Official Nx documentation
+- **Prisma ORM:** [prisma.io/docs](https://www.prisma.io/docs) — Database toolkit documentation
+
+---
 
 ## 🛠️ Tech Stack
 
