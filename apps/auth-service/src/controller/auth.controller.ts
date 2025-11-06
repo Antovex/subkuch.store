@@ -11,6 +11,7 @@ import prisma from "@packages/libs/prisma";
 import { AuthError, ValidationError } from "@packages/error-handler";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { setCookie } from "../utils/cookies/setCookie";
 
 // Register new user
 export const userRegistration = async (
@@ -130,7 +131,7 @@ export const verifyUser = async (
 };
 
 // Login existing user
-export const login = async (
+export const loginUser = async (
     req: Request,
     res: Response,
     next: NextFunction
@@ -176,6 +177,17 @@ export const login = async (
         );
 
         // store the access and refresh token in httpOnly secure cookies
+        setCookie(res, "refresh_token", refreshToken);
+        setCookie(res, "access_token", accessToken);
+
+        res.status(200).json({
+            message: "Login successful",
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name
+            }
+        })
 
     } catch (error) {
         return next(error);
