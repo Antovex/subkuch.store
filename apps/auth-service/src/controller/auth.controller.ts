@@ -6,6 +6,7 @@ import {
     sendOtp,
     verifyOtp,
     emailRegex,
+    handleForgotPassword,
 } from "../utils/auth.helper";
 import prisma from "@packages/libs/prisma";
 import { AuthError, ValidationError } from "@packages/error-handler";
@@ -193,3 +194,8 @@ export const loginUser = async (
         return next(error);
     }
 };
+
+// Forgot Password 
+export const userForgotPassword = async (req: Request, res: Response, next: NextFunction) => {
+    await handleForgotPassword(req, res, next, "user");
+}
