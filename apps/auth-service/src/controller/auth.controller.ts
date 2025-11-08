@@ -7,6 +7,7 @@ import {
     verifyOtp,
     emailRegex,
     handleForgotPassword,
+    verifyUserForgotPasswordOtp,
 } from "../utils/auth.helper";
 import prisma from "@packages/libs/prisma";
 import { AuthError, ValidationError } from "@packages/error-handler";
@@ -198,4 +199,47 @@ export const loginUser = async (
 // Forgot Password 
 export const userForgotPassword = async (req: Request, res: Response, next: NextFunction) => {
     await handleForgotPassword(req, res, next, "user");
+}
+
+// Verify OTP for Forgot Password
+export const verifyUserForgotPassword = async (req: Request, res: Response, next: NextFunction) => {
+    await verifyUserForgotPasswordOtp(req, res, next);
+}
+
+export const resetUserPassword = async (req: Request, res: Response, next: NextFunction ) => {
+    try {
+        const { email, newPassword } = req.body;
+
+        if (!email || !newPassword) {
+            throw new ValidationError("Email and new password are required!");
+        }
+
+        const user = await prisma.users.findUnique({ where: { email } });
+
+        if (!user) {
+            throw new ValidationError("No user found with this email!");
+        }
+
+        // compare new password with old password
+        const isSamePassword = await bcrypt.compare(newPassword, user.password!);
+
+        if (isSamePassword) {
+            throw new ValidationError("New password cannot be the same as the old password!");
+        }
+
+        // Hash new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // Update password in database
+        await prisma.users.update({
+            where: { email },
+            data: { password: hashedPassword },
+        });
+
+        res.status(200).json({
+            message: "Password reset successfully!",
+        });
+    } catch (error) {
+        next(error);
+    }
 }
