@@ -101,37 +101,74 @@
     },
     "/login": {
       "post": {
-        "description": "Login exsisting user",
+        "description": "",
         "parameters": [
           {
             "name": "body",
             "in": "body",
-            "description": "Details for login",
-            "required": true,
             "schema": {
               "type": "object",
               "properties": {
                 "email": {
-                  "type": "string",
-                  "example": "john@example.com"
+                  "example": "any"
                 },
                 "password": {
-                  "type": "string",
-                  "example": "SecurePass123!"
+                  "example": "any"
                 }
               }
             }
           }
         ],
         "responses": {
-          "201": {
-            "description": "Login successful"
-          },
-          "400": {
-            "description": "Email and password are required OR Invalid email format OR User doesn't exist! Check your email or register first."
-          },
-          "401": {
-            "description": "Invalid email or password"
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/forgot-password-user": {
+      "post": {
+        "description": "",
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/reset-password-user": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "email": {
+                  "example": "any"
+                },
+                "newPassword": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/verify-forgot-password-user": {
+      "post": {
+        "description": "",
+        "responses": {
+          "default": {
+            "description": ""
           }
         }
       }
