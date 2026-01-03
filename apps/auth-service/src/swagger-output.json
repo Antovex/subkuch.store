@@ -2,155 +2,176 @@
   "swagger": "2.0",
   "info": {
     "title": "Auth Service API",
-    "description": "API documentation for the Auth Service",
+    "description": "Professional authentication service API with OTP-based registration, JWT authentication, and password management",
     "version": "1.0.0"
   },
   "host": "localhost:6001",
   "basePath": "/api",
-  "schemes": [
-    "http"
+  "schemes": ["http"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "User registration, login, and account verification endpoints"
+    },
+    {
+      "name": "Password Management",
+      "description": "Password reset and recovery endpoints"
+    }
   ],
   "paths": {
     "/user-registration": {
       "post": {
-        "description": "Register a new user and send OTP verification email",
+        "tags": ["Authentication"],
+        "summary": "Register a new user",
+        "description": "Initiate user registration by providing user details. An OTP will be sent to the email address for verification. The user must verify the OTP within 5 minutes to complete registration.",
+        "operationId": "userRegistration",
         "parameters": [
           {
             "name": "body",
             "in": "body",
-            "description": "User registration information",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "name": {
-                  "type": "string",
-                  "example": "John Doe"
-                },
-                "email": {
-                  "type": "string",
-                  "example": "john@example.com"
-                },
-                "password": {
-                  "type": "string",
-                  "example": "SecurePass123!"
-                },
-                "phone_number": {
-                  "type": "string",
-                  "example": "+1234567890"
-                },
-                "country": {
-                  "type": "string",
-                  "example": "US"
-                }
-              }
+              "$ref": "#/definitions/UserRegistrationRequest"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "OTP sent successfully"
+            "description": "OTP sent successfully to the provided email address",
+            "schema": {
+              "$ref": "#/definitions/RegistrationResponse"
+            }
           },
           "400": {
-            "description": "Validation error or user already exists"
+            "description": "Validation error or user already exists",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "429": {
+            "description": "Too many registration requests. Rate limit exceeded",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
           }
         }
       }
     },
     "/verify-user": {
       "post": {
-        "description": "Verify OTP and complete user registration",
+        "tags": ["Authentication"],
+        "summary": "Complete user registration with OTP verification",
+        "description": "Verify the OTP sent to the email and complete user registration. After successful verification, the user account is created and ready for login.",
+        "operationId": "verifyUser",
         "parameters": [
           {
             "name": "body",
             "in": "body",
-            "description": "OTP verification and user details",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "email": {
-                  "type": "string",
-                  "example": "john@example.com"
-                },
-                "otp": {
-                  "type": "string",
-                  "example": "1234"
-                },
-                "password": {
-                  "type": "string",
-                  "example": "SecurePass123!"
-                },
-                "name": {
-                  "type": "string",
-                  "example": "John Doe"
-                }
-              }
+              "$ref": "#/definitions/VerifyUserRequest"
             }
           }
         ],
         "responses": {
           "201": {
-            "description": "User registered successfully"
+            "description": "User account created successfully",
+            "schema": {
+              "$ref": "#/definitions/SuccessResponse"
+            }
           },
           "400": {
-            "description": "Validation error, invalid OTP, or user already exists"
+            "description": "Validation error, invalid OTP, or user already exists",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "410": {
+            "description": "OTP has expired",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
           }
         }
       }
     },
     "/login": {
       "post": {
-        "description": "",
+        "tags": ["Authentication"],
+        "summary": "Authenticate user and obtain tokens",
+        "description": "Authenticate with email and password. JWT tokens are issued via HTTP-only secure cookies. Access tokens expire in 15 minutes; refresh tokens in 7 days.",
+        "operationId": "loginUser",
         "parameters": [
           {
             "name": "body",
             "in": "body",
+            "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "email": {
-                  "example": "any"
-                },
-                "password": {
-                  "example": "any"
-                }
-              }
+              "$ref": "#/definitions/LoginRequest"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Login successful. Tokens issued in HTTP-only secure cookies.",
+            "schema": {
+              "$ref": "#/definitions/LoginResponse"
+            }
+          },
+          "400": {
+            "description": "Validation error - missing or invalid email",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "401": {
+            "description": "Authentication failed - invalid credentials or user not found",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
           }
         }
       }
     },
     "/forgot-password-user": {
       "post": {
-        "description": "",
-        "responses": {
-          "default": {
-            "description": ""
-          }
-        }
-      }
-    },
-    "/reset-password-user": {
-      "post": {
-        "description": "",
+        "tags": ["Password Management"],
+        "summary": "Initiate password reset flow",
+        "description": "Request a password reset by providing the registered email. An OTP will be sent to verify identity. OTP is valid for 10 minutes.",
+        "operationId": "forgotPassword",
         "parameters": [
           {
             "name": "body",
             "in": "body",
+            "required": true,
             "schema": {
               "type": "object",
+              "required": ["email"],
               "properties": {
                 "email": {
-                  "example": "any"
-                },
-                "newPassword": {
-                  "example": "any"
+                  "type": "string",
+                  "format": "email",
+                  "example": "user@example.com"
                 }
               }
             }
@@ -158,18 +179,289 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Password reset OTP sent to email",
+            "schema": {
+              "$ref": "#/definitions/RegistrationResponse"
+            }
+          },
+          "400": {
+            "description": "Validation error or user not found",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "429": {
+            "description": "Too many reset requests",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
           }
         }
       }
     },
     "/verify-forgot-password-user": {
       "post": {
-        "description": "",
-        "responses": {
-          "default": {
-            "description": ""
+        "tags": ["Password Management"],
+        "summary": "Verify OTP for password reset",
+        "description": "Verify the OTP sent to the email during password reset. Must be completed before calling /reset-password-user.",
+        "operationId": "verifyForgotPassword",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["email", "otp"],
+              "properties": {
+                "email": {
+                  "type": "string",
+                  "format": "email",
+                  "example": "user@example.com"
+                },
+                "otp": {
+                  "type": "string",
+                  "example": "123456"
+                }
+              }
+            }
           }
+        ],
+        "responses": {
+          "200": {
+            "description": "OTP verified. Proceed to /reset-password-user",
+            "schema": {
+              "$ref": "#/definitions/SuccessResponse"
+            }
+          },
+          "400": {
+            "description": "Invalid OTP or user not found",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "410": {
+            "description": "OTP has expired",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/reset-password-user": {
+      "post": {
+        "tags": ["Password Management"],
+        "summary": "Reset user password",
+        "description": "Set a new password after OTP verification. The new password must be different from the current password.",
+        "operationId": "resetPassword",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["email", "newPassword"],
+              "properties": {
+                "email": {
+                  "type": "string",
+                  "format": "email",
+                  "example": "user@example.com"
+                },
+                "newPassword": {
+                  "type": "string",
+                  "example": "NewSecurePass123!"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Password reset successfully",
+            "schema": {
+              "$ref": "#/definitions/SuccessResponse"
+            }
+          },
+          "400": {
+            "description": "Validation error or user not found",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "UserRegistrationRequest": {
+      "type": "object",
+      "required": ["name", "email", "password"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "example": "John Doe",
+          "description": "Full name of the user"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "example": "john.doe@example.com",
+          "description": "Valid email address (must be unique)"
+        },
+        "password": {
+          "type": "string",
+          "example": "SecurePass123!",
+          "description": "Strong password (minimum 8 characters recommended)"
+        },
+        "phone_number": {
+          "type": "string",
+          "example": "+1234567890",
+          "description": "Optional: International format phone number"
+        },
+        "country": {
+          "type": "string",
+          "example": "US",
+          "description": "Optional: 2-letter country code"
+        }
+      }
+    },
+    "VerifyUserRequest": {
+      "type": "object",
+      "required": ["email", "otp", "password", "name"],
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "example": "john.doe@example.com",
+          "description": "Email address used during registration"
+        },
+        "otp": {
+          "type": "string",
+          "example": "123456",
+          "description": "6-digit OTP sent to email (valid for 5 minutes)"
+        },
+        "password": {
+          "type": "string",
+          "example": "SecurePass123!",
+          "description": "Password for the new account"
+        },
+        "name": {
+          "type": "string",
+          "example": "John Doe",
+          "description": "Full name (must match registration)"
+        }
+      }
+    },
+    "LoginRequest": {
+      "type": "object",
+      "required": ["email", "password"],
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "example": "john.doe@example.com",
+          "description": "Registered email address"
+        },
+        "password": {
+          "type": "string",
+          "example": "SecurePass123!",
+          "description": "Account password"
+        }
+      }
+    },
+    "RegistrationResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "example": "OTP sent to your email. Please verify to complete registration.",
+          "description": "Status message indicating OTP has been sent"
+        }
+      }
+    },
+    "LoginResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "example": "Login successful",
+          "description": "Confirmation message"
+        },
+        "user": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "example": "507f1f77bcf86cd799439011",
+              "description": "Unique user ID (MongoDB ObjectId)"
+            },
+            "email": {
+              "type": "string",
+              "format": "email",
+              "example": "john.doe@example.com",
+              "description": "User's email address"
+            },
+            "name": {
+              "type": "string",
+              "example": "John Doe",
+              "description": "User's full name"
+            }
+          }
+        }
+      }
+    },
+    "SuccessResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "example": true,
+          "description": "Indicates successful operation"
+        },
+        "message": {
+          "type": "string",
+          "example": "User registered successfully",
+          "description": "Detailed success message"
+        }
+      }
+    },
+    "ErrorResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string",
+          "example": "User with this email already exists",
+          "description": "Error message describing what went wrong"
+        },
+        "code": {
+          "type": "string",
+          "example": "VALIDATION_ERROR",
+          "description": "Error code for programmatic handling"
+        },
+        "statusCode": {
+          "type": "integer",
+          "example": 400,
+          "description": "HTTP status code"
         }
       }
     }
