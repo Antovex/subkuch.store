@@ -11,20 +11,20 @@ const doc = {
     schemes: ["http"],
     consumes: ["application/json"],
     produces: ["application/json"],
-    // securityDefinitions: {
-    //     bearerAuth: {
-    //         type: "apiKey",
-    //         name: "Authorization",
-    //         in: "header",
-    //         description: "JWT authorization header using Bearer scheme. Example: 'Bearer {token}'"
-    //     },
-    //     cookieAuth: {
-    //         type: "apiKey",
-    //         name: "Cookie",
-    //         in: "header",
-    //         description: "HTTP-only cookie based authentication (access_token and refresh_token)"
-    //     }
-    // },
+    securityDefinitions: {
+        bearerAuth: {
+            type: "apiKey",
+            name: "Authorization",
+            in: "header",
+            description: "JWT authorization header using Bearer scheme. Example: 'Bearer {token}'"
+        },
+        cookieAuth: {
+            type: "apiKey",
+            name: "Cookie",
+            in: "header",
+            description: "HTTP-only cookie based authentication (access_token and refresh_token)"
+        }
+    },
     tags: [
         {
             name: "Authentication",
