@@ -1,5 +1,7 @@
 "use client";
-import { AlignLeft, ChevronDown } from "lucide-react";
+import { navItems } from "apps/user-ui/src/configs/constants";
+import { AlignLeft, ChevronDown, HeartIcon, ShoppingBasket, UserRound } from "lucide-react";
+import Link from "next/link";
 import React, { useEffect, useState } from "react";
 
 const HeaderBottom = () => {
@@ -14,11 +16,11 @@ const HeaderBottom = () => {
             } else {
                 setIsSticky(false);
             }
+        };
 
-            window.addEventListener("scroll", handleScroll);
-            return () => {
-                window.removeEventListener("scroll", handleScroll);
-            };
+        window.addEventListener("scroll", handleScroll);
+        return () => {
+            window.removeEventListener("scroll", handleScroll);
         };
     }, []);
 
@@ -58,7 +60,62 @@ const HeaderBottom = () => {
                 )}
 
                 {/* Navigation Links */}
-                <div className="flex items-center"></div>
+                <div className="flex items-center">
+                    {navItems.map((i: NavItemsTypes, index: number) => (
+                        <Link className="px-5 font-medium text-lg" href={i.href} key={index}>
+                            {i.title}
+                        </Link>
+                    ))}
+                </div>
+
+                <div>
+                    {isSticky && (
+                        <div className="flex items-center gap-8">
+                    <div className="flex items-center gap-2">
+                        <Link
+                            href={"/login"}
+                            className="border-2 w-[44px] h-[44px] flex items-center justify-center rounded-full border-[#010f1c1a] hover:border-[#3489FF] hover:bg-[#3489FF]/5 transition-all duration-200"
+                        >
+                            <UserRound width={28} height={28} />
+                            {/* <ProfileIcon
+                                width={28}
+                                height={28}
+                                color="#010f1c"
+                            /> */}
+                        </Link>
+                        <Link
+                            href={"/login"}
+                            className="hover:text-[#3489FF] transition-colors duration-200"
+                        >
+                            <span className="block font-medium text-sm">
+                                Hello,{" "}
+                            </span>
+                            <span className="font-semibold text-base">
+                                Sign In
+                            </span>
+                        </Link>
+                    </div>
+                    <div className="flex items-center gap-5">
+                        <Link href={"/wishlist"} className="relative">
+                            <HeartIcon width={25} height={25} />
+                            <div className="w-6 h-6 border-white bg-red-500 rounded-full flex items-center justify-center absolute top-[-10px] right-[-10px]">
+                                <span className="text-white font-medium text-xs">
+                                    4
+                                </span>
+                            </div>
+                        </Link>
+                        <Link href={"/cart"} className="relative">
+                            <ShoppingBasket width={28} height={28} />
+                            <div className="w-6 h-6 border-white bg-red-500 rounded-full flex items-center justify-center absolute top-[-10px] right-[-10px]">
+                                <span className="text-white font-medium text-xs">
+                                    2
+                                </span>
+                            </div>
+                        </Link>
+                    </div>
+                </div>
+                    )}
+                </div>
             </div>
         </div>
     );
