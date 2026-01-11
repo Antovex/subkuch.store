@@ -36,10 +36,13 @@ const SignUp = () => {
         }
     };
 
-    const resendOTP = () => {};
+    const resendOTP = () => {
+        if(userData) {
+            signupMutation.mutate(userData);
+        }
+    };
 
     const [passwordVisible, setPasswordVisible] = useState(false);
-    const [serverError, setServerError] = useState<string | null>(null);
     const [canResend, setCanResend] = useState(true);
     const [showOtp, setShowOtp] = useState(false);
     const [timer, setTimer] = useState(60);
@@ -83,16 +86,19 @@ const SignUp = () => {
             setTimer(60);
             startResendTimer();
         },
+        onError: (error) => {
+            console.error("Signup error:", error);
+        },
     });
 
     // Add this to verifyOtp button
     const verifyOtpMutation = useMutation({
         mutationFn: async () => {
-            if(!userData) return;
+            if (!userData) return;
 
             const response = await axios.post(
                 `${process.env.NEXT_PUBLIC_API_URL}/api/verify-user`,
-                {...userData, otp: otp.join("")}
+                { ...userData, otp: otp.join("") }
             );
             return response.data;
         },
@@ -135,6 +141,15 @@ const SignUp = () => {
 
                     {!showOtp ? (
                         <form onSubmit={handleSubmit(onSubmit)}>
+                            {signupMutation.isError && (
+                                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                                    {signupMutation.error instanceof AxiosError
+                                        ? signupMutation.error.response?.data?.message ||
+                                          "Signup failed. Please try again."
+                                        : "An error occurred. Please try again."}
+                                </div>
+                            )}
+
                             <label className="block text-gray-700 mb-1">
                                 Name
                             </label>
@@ -221,12 +236,6 @@ const SignUp = () => {
                                     ? "Signing Up..."
                                     : "Sign Up"}
                             </button>
-
-                            {serverError && (
-                                <p className="text-red-500 text-sm mt-2">
-                                    {serverError}
-                                </p>
-                            )}
                         </form>
                     ) : (
                         <div>
@@ -253,13 +262,19 @@ const SignUp = () => {
                                         onKeyDown={(e) => {
                                             handleOtpKeyDown(index, e);
                                         }}
-                                        className="w-12 h-12 text-center border border-gray-300 outline-none !rounded"
+                                        className="w-12 h-12 text-center border border-gray-300 outline-none !rounded-full"
                                     />
                                 ))}
                             </div>
                             <div className="flex items-center justify-center">
-                                <button className="w-4/5 mt-4 text-lg cursor-pointer bg-blue-500 text-white py-2 rounded-lg">
-                                    Verify OTP
+                                <button
+                                    className="w-4/5 mt-4 text-lg cursor-pointer bg-blue-500 text-white py-2 rounded-lg"
+                                    disabled={verifyOtpMutation.isPending}
+                                    onClick={() => verifyOtpMutation.mutate()}
+                                >
+                                    {verifyOtpMutation.isPending
+                                        ? "Verifying..."
+                                        : "Verify OTP"}
                                 </button>
                             </div>
                             <p className="text-center text-sm mt-4">
@@ -274,6 +289,18 @@ const SignUp = () => {
                                     `Resend OTP in ${timer}s`
                                 )}
                             </p>
+                            {
+                                verifyOtpMutation.isError && (
+                                    <p className="text-red-500 text-sm mt-2">
+                                        {verifyOtpMutation.error instanceof
+                                        AxiosError
+                                            ? verifyOtpMutation.error.response
+                                                  ?.data?.message ||
+                                              "Failed to verify OTP"
+                                            : "Failed to verify OTP"}
+                                    </p>
+                                )
+                            }
                         </div>
                     )}
                 </div>
