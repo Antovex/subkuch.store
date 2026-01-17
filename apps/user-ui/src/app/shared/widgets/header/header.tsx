@@ -73,7 +73,7 @@ const Header = () => {
                                         Hello,{" "}
                                     </span>
                                     <span className="font-semibold text-base">
-                                        Sign In
+                                        {isLoading ? "..." : "Sign In"}
                                     </span>
                                 </Link>
                             </>
